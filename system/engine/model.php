@@ -62,7 +62,7 @@ abstract class Model {
 
 
 
-    public function getMany($params = false,$limit = false,$sort = false,$joins = array(), $select = false)
+    public function getMany($params,$limit = false,$sort = false,$joins = array(), $select = false)
     {
         $sql = 'SELECT ';
 
