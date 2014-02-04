@@ -7,7 +7,7 @@
  * To change this template use File | Settings | File Templates.
  */
 
-class DbQBulder {
+class DbQBuilder {
 
     public $wheres;
     public $joins;

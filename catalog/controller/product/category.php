@@ -8,31 +8,6 @@ class ControllerProductCategory extends Controller {
 		
 		$this->load->model('catalog/category');
 
-        $q = new DbQBulder();
-        $w = new DbWhere;
-        $w->setColumn('description')
-            ->setAlias('cd')
-            ->setRelation('=')
-            ->setType('int')
-            ->setValue(2);
-        $q->addWhere($w);
-        $l = new DbLimit();
-        $l->setStart(0)
-            ->setStop(20);
-        $q->setLimit($l);
-        $s = new Dbsort();
-        $s->setColumn('category_id')
-            ->setAlias('c')
-            ->setOrder('ASC');
-        $q->addSorts($s);
-
-
-
-
-        $data = $this->model_catalog_category->getMany(
-         $q
-        );
-
 
 		
 		$this->load->model('catalog/product');

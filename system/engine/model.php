@@ -8,6 +8,7 @@ abstract class Model {
     protected $defaultJoins;
     protected $tableAlias;
 
+
     public function setTableAlias($tableAlias)
     {
         $this->tableAlias = $tableAlias;
@@ -62,18 +63,18 @@ abstract class Model {
 
 
 
-    public function getMany($params,$limit = false,$sort = false,$joins = array(), $select = false)
+    public function getMany(DbQBuilder $q)
     {
-        $sql = 'SELECT ';
+        $sql = 'SELECT * ';
 
-        if($select)
+       /* if($q->)
         {
             $sql .= $select;
         }
         else
         {
             $sql .= ' * ';
-        }
+        } */
 
         $sql .= ' FROM '.DB_PREFIX.'`'.$this->tableName.'` '.$this->tableAlias;
 
@@ -81,21 +82,21 @@ abstract class Model {
         {
             foreach($this->defaultJoins as $join)
             {
-                $joins[] = $join;
+                $q->addJoin($join);
             }
         }
 
-        if(!empty($joins))
+        if(!empty($q->joins))
         {
-            foreach($joins as $join)
+            foreach($q->joins as $join)
             {
-                $sql .= ' '.$join['type'].' JOIN `'.$join['table'].'` '.$join['alias'].' ON('.$this->tableAlias.'.'.$join['field'].'='.$join['alias'].'.'.$join['field'].') ';
+                $sql .= ' '.$join->type.' JOIN `'.$join->tableName.'` '.$join->alias.' ON('.$this->tableAlias.'.'.$join->key.'='.$join->alias.'.'.$join->key.') ';
             }
         }
 
-        if(is_array($params))
+        if(!empty($q->wheres))
         {
-            foreach($params as $key => $param)
+            foreach($q->wheres as $key => $param)
             {
                 if($key === 0)
                 {
@@ -108,83 +109,194 @@ abstract class Model {
                     $sql .= ' AND ';
                 }
 
-                if(isset($param['alias']))
+                if(isset($param->alias))
                 {
-                    $param['column'] = $param['alias'].".`".$param['column']."`";
+                    $param->column = $param->alias.".`".$param->column ."`";
                 }
                 else
                 {
-                    $param['column'] = "`".$param['column']."`";
+                    $param->column  = "`".$param->column ."`";
                 }
 
-                if($param['type'] == 'string')
+                if($param->type == 'string')
                 {
-                    $sql .= " ".$param['column']." ".$param['relation']." '".$this->db->escape($param['value'])."' ";
+                    $sql .= " ".$param->column." ".$param->relation." '".$this->db->escape($param->value)."' ";
                 }
-                elseif($param['type'] == 'float')
+                elseif($param->type == 'float')
                 {
-                    $sql .= " ".$param['column']." ".$param['relation']." '".(float)$param['value']."' ";
+                    $sql .= " ".$param->column." ".$param->relation." '".(float)$param->value."' ";
                 }
                 else
                 {
-                    $sql .= " ".$param['column']." ".$param['relation']." '".(int)$param['value']."' ";
+                    $sql .= " ".$param->column." ".$param->relation." '".(int)$param->value."' ";
                 }
             }
         }
+
+
 
 
 
         if($this->defaultSort)
         {
-            $sort[] = $this->defaultSort;
+            foreach($this->defaultSort as $sort)
+            {
+                $q->addSorts($sort);
+            }
+
         }
 
-        if($sort)
+        if(!empty($q->sorts))
         {
 
-            foreach($sort as $key => $s)
+            foreach($q->sorts as $key => $s)
             {
 
-                if(isset($s['alias']))
+                if(isset($s->alias))
                 {
-                    $s['column'] = $s['alias'].".`".$s['column']."`";
+                    $s->column = $s->alias.".`".$s->column."`";
                 }
                 else
                 {
-                    $s['column'] = "`".$s['column']."`";
+                    $s->column = "`".$s->column."`";
                 }
 
                 if($key === 0 )
                 {
-                    $sql .= " ORDER BY ".$s['column']." ".$s['order'];
+                    $sql .= " ORDER BY ".$s->column." ".$s->order;
                 }
                 else
                 {
-                    $sql .= ", ".$s['column']." ".$s['order'];
+                    $sql .= ", ".$s->column." ".$s->order;
                 }
             }
 
         }
 
-        if($limit)
+        if($q->limit)
         {
-            $sql .= " LIMIT " . (int)$limit['start'] . "," . (int)$limit['stop'];
+            $sql .= " LIMIT " . (int)$q->limit->start . "," . (int)$q->limit->stop;
         }
+
 
 
         $q = $this->db->query($sql);
 
-        return $q->rows;
+
+            return $q->rows;
+
+
+
     }
 
-    public function setDefaultSort($defaultSort)
+    public function save(DbRow $row)
     {
-        $this->defaultSort = $defaultSort;
+        $resp = array();
+
+        if($row->ID==false)
+        {
+            $resp = $this->getOne($row->ID);
+        }
+
+
+        if(!empty($resp))
+        {
+
+            // update
+            $sql = 'UPDATE '.DB_PREFIX.'`'.$this->tableName.'`';
+
+        }
+        else
+        {
+            // save
+            $sql = 'INSERT INTO '.DB_PREFIX.'`'.$this->tableName.'`';
+        }
+
+        $fields = $row->map;
+
+        if($fields)
+        {
+            $sql .= ' SET ';
+        }
+
+        $i = 0;
+
+        foreach($fields as $key => $field)
+        {
+            if($i!==0)
+            {
+                if($field['type'] != 'objArray')
+                {
+                    $sql .= ' , ';
+                }
+
+
+
+            }
+            else
+            {
+                $i++;
+            }
+
+            if($field['type'] == 'string')
+            {
+                $sql .= " `".$field['column']."` = '".$this->db->escape($row->$field['column'])."' ";
+            }
+            if($field['type'] == 'float')
+            {
+                $sql .= " `".$field['column']."` = '".(float)$row->$field['column']."' ";
+            }
+            if($field['type'] == 'int')
+            {
+                $sql .= " `".$field['column']."` = '".(int)$row->$field['column']."' ";
+            }
+
+
+
+
+
+        }
+
+        if(!empty($resp))
+        {
+
+            // update
+            $sql .= " WHERE `".$row->primaryKey."` = '".(int)$row->ID."'  ";
+
+        }
+
+
+
+        $this->db->query($sql);
+
+        $id = $this->db->getLastId();
+
+        /* foreach($fields as $field)
+        {
+            if($field['type'] == 'objArray')
+            {
+                foreach($row->$field['foreignTable'] as $row)
+                {
+
+                    $row->$field['relation'] = $id;
+                    $this->save($row);
+                }
+            }
+        } */
+
+        return $id;
+
+
     }
 
-    public function setDefaultJoins($defaultJoins)
+    public function addDefaultSort($defaultSort)
     {
-        $this->defaultJoins = $defaultJoins;
+        $this->defaultSort[] = $defaultSort;
+    }
+
+    public function addDefaultJoins($defaultJoins)
+    {
+        $this->defaultJoins[] = $defaultJoins;
     }
 
 

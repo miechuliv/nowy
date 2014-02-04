@@ -8,16 +8,13 @@ class ModelCatalogCategory extends Model {
         $this->setId('category_id');
         $this->setTableName('category');
         $this->setTableAlias('c');
-        $this->setDefaultJoins(
-            array(
-                array(
-                    'type' => 'LEFT',
-                    'table' => 'category_description',
-                    'alias' => 'cd',
-                    'field' => 'category_id',
-                )
-            )
-        );
+        $j = new DbJoin();
+        $j->setAlias('cd')
+            ->setTableName('category_description')
+            ->setType('LEFT')
+            ->setKey('category_id');
+        $this->addDefaultJoins( $j );
+
     }
 
     public function getCategory($category_id,$all = false) {
@@ -125,4 +122,6 @@ class ModelCatalogCategory extends Model {
 		return $query->row['total'];
 	}
 }
+
+
 ?>
